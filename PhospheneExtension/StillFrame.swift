@@ -4,7 +4,11 @@ import Foundation
 
 /// Wrap `image` in an IOSurface-backed `CMSampleBuffer` at PTS zero, sized to the
 /// image. Returns nil if any Core Video/Media step fails.
-func makeStillSampleBuffer(from image: CGImage) -> CMSampleBuffer? {
+///
+/// `taggedSRGB` converts the image to sRGB and tags the buffer as sRGB. Untagged, the
+/// display layer takes the pixels as display-native, which oversaturates and darkens a
+/// photo on a wide-gamut panel.
+func makeStillSampleBuffer(from image: CGImage, taggedSRGB: Bool = false) -> CMSampleBuffer? {
     let width = image.width
     let height = image.height
     guard width > 0, height > 0 else { return nil }
@@ -21,6 +25,13 @@ func makeStillSampleBuffer(from image: CGImage) -> CMSampleBuffer? {
         pixelBufferAttributes as CFDictionary, &pixelBufferOut,
     ) == kCVReturnSuccess, let pixelBuffer = pixelBufferOut else { return nil }
 
+    let colorSpace = taggedSRGB ? CGColorSpace(name: CGColorSpace.sRGB)! : CGColorSpaceCreateDeviceRGB()
+    if taggedSRGB {
+        CVBufferSetAttachment(pixelBuffer, kCVImageBufferCGColorSpaceKey, colorSpace, .shouldPropagate)
+        CVBufferSetAttachment(pixelBuffer, kCVImageBufferColorPrimariesKey, kCVImageBufferColorPrimaries_ITU_R_709_2, .shouldPropagate)
+        CVBufferSetAttachment(pixelBuffer, kCVImageBufferTransferFunctionKey, kCVImageBufferTransferFunction_sRGB, .shouldPropagate)
+    }
+
     CVPixelBufferLockBaseAddress(pixelBuffer, [])
     defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, []) }
 
@@ -28,7 +39,7 @@ func makeStillSampleBuffer(from image: CGImage) -> CMSampleBuffer? {
         data: CVPixelBufferGetBaseAddress(pixelBuffer),
         width: width, height: height, bitsPerComponent: 8,
         bytesPerRow: CVPixelBufferGetBytesPerRow(pixelBuffer),
-        space: CGColorSpaceCreateDeviceRGB(),
+        space: colorSpace,
         bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue,
     ) else { return nil }
     context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))

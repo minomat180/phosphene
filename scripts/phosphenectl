@@ -30,21 +30,23 @@ abspath() {
   /usr/bin/python3 -c 'import os, sys; print(os.path.abspath(os.path.expanduser(sys.argv[1])))' "$1"
 }
 
-# Send a URL and wait for a result newer than the request.
-send() {
-  before=$(stat -f %Fm "$RESULT" 2>/dev/null || echo 0)
-  pgrep -qx Phosphene || { open -g -a /Applications/Phosphene.app; sleep 2; }
+post() {
   /usr/bin/osascript -l JavaScript - "$1" >/dev/null <<'JS'
 ObjC.import("Foundation");
 function run(argv) {
   $.NSDistributedNotificationCenter.defaultCenter
     .postNotificationNameObjectUserInfoDeliverImmediately("io.github.minomat180.phosphene.command", argv[0], $(), true);
+  // Posting is asynchronous; exiting at once can drop the notification.
+  delay(0.3);
 }
 JS
+}
+
+# Wait up to $2 tenths of a second for a result newer than $1.
+await_result() {
   i=0
-  while [ $i -lt 100 ]; do
-    now=$(stat -f %Fm "$RESULT" 2>/dev/null || echo 0)
-    if [ "$now" != "$before" ]; then
+  while [ $i -lt "$2" ]; do
+    if [ "$(stat -f %Fm "$RESULT" 2>/dev/null || echo 0)" != "$1" ]; then
       cat "$RESULT"; echo
       grep -q '"ok" : true' "$RESULT"
       return
@@ -52,8 +54,27 @@ JS
     sleep 0.1
     i=$((i + 1))
   done
-  echo "No answer from Phosphene within 10 s (is the fork running from /Applications?)" >&2
-  return 1
+  return 2
+}
+
+# Send a URL and print the app's answer. A notification that arrives while the app is
+# still launching is lost, so an unanswered command is sent once more.
+send() {
+  before=$(stat -f %Fm "$RESULT" 2>/dev/null || echo 0)
+  pgrep -qx Phosphene || { open -g -a /Applications/Phosphene.app; sleep 3; }
+  post "$1"
+  status=0
+  await_result "$before" 30 || status=$?
+  if [ $status -eq 2 ]; then
+    post "$1"
+    status=0
+    await_result "$before" 70 || status=$?
+  fi
+  if [ $status -eq 2 ]; then
+    echo "No answer from Phosphene within 10 s (is the fork running from /Applications?)" >&2
+    return 1
+  fi
+  return $status
 }
 
 [ $# -ge 1 ] || usage

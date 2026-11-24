@@ -153,7 +153,7 @@ final class DesktopOverlay: @unchecked Sendable, TargetFollower {
         guard let url = source?.url else { return }
         let pixels = max(layer.bounds.width, layer.bounds.height) * max(layer.contentsScale, 1)
         guard let image = Self.loadImage(url, maxPixelSize: Int(pixels)),
-              let buffer = makeStillSampleBuffer(from: image) else {
+              let buffer = makeStillSampleBuffer(from: image, taggedSRGB: true) else {
             extensionLog("  [desktop #\(debugID)] could not decode \(url.lastPathComponent)")
             source = nil
             return
