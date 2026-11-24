@@ -9,6 +9,8 @@ struct HostedSurface: @unchecked Sendable {
     let contextId: UInt32
     let rootLayer: CALayer
     var renderer: VideoRenderer?
+    /// The desktop's own wallpaper above the video; nil only on a bisect surface.
+    var overlay: DesktopOverlay?
     let displayID: UInt32?
     var videoID: String?
     /// Set from the acquire's `isPreview` flag. `hasLiveRenderer(onDisplay:isPreview:)`
@@ -162,6 +164,7 @@ final class SurfaceRegistry: Sendable {
         }
         for surface in removed.values {
             surface.renderer?.stop()
+            surface.overlay?.stop()
             invalidateRemoteContext(surface.caContext)
         }
         return Array(removed.keys)
@@ -173,6 +176,7 @@ final class SurfaceRegistry: Sendable {
     func tearDown(_ key: SurfaceKey) -> Bool {
         guard let removed = lock.withLock({ $0.surfaces.removeValue(forKey: key) }) else { return false }
         removed.renderer?.stop()
+        removed.overlay?.stop()
         invalidateRemoteContext(removed.caContext)
         return true
     }

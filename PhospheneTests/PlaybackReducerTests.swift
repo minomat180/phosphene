@@ -281,6 +281,84 @@ struct PlaybackReducerTests {
         #expect(state.lastVideoID == "Y")
     }
 
+    // MARK: - Desktop source
+
+    private func target(_ key: SurfaceKey, _ state: PlaybackState) -> SurfaceTarget? {
+        PlaybackReducer.targets(state)[key]
+    }
+
+    private let desktopImage = DesktopSource(kind: .image, file: "a.png")
+
+    /// The unlocked desktop shows the desktop source and the video holds paused under it.
+    @Test
+    func `desktop source covers the paused video when unlocked`() {
+        let state = run([prefs { $0.alwaysPauseDesktop = true; $0.desktopSource = desktopImage }, acquire(desktop)])
+        let target = target(desktop, state)
+        #expect(target?.showsDesktop == true)
+        #expect(target?.desktopSource == desktopImage)
+        #expect(target?.policy == .paused)
+        #expect(target?.desktopPolicy == .full)
+    }
+
+    /// The lock notification uncovers the video with a fade, before the agent updates.
+    @Test
+    func `lock uncovers the video and plays it`() {
+        let state = run([prefs { $0.alwaysPauseDesktop = true; $0.desktopSource = desktopImage }, acquire(desktop), .screenLockChanged(true)])
+        let target = target(desktop, state)
+        #expect(target?.showsDesktop == false)
+        #expect(target?.policy == .full)
+        #expect(target?.desktopPolicy == .paused)
+        #expect(target?.ramps == true)
+    }
+
+    /// Unlock covers the video again only once the agent presents the desktop.
+    @Test
+    func `unlock covers again when the agent presents the desktop`() {
+        let locked = run([
+            prefs { $0.alwaysPauseDesktop = true; $0.desktopSource = desktopImage },
+            acquire(desktop),
+            .screenLockChanged(true),
+            .agentUpdate(desktop, mode: .locked, activity: .active),
+            .screenLockChanged(false),
+        ])
+        #expect(target(desktop, locked)?.showsDesktop == false)
+        let unlocked = run([.agentUpdate(desktop, mode: .default, activity: .active)], from: locked)
+        #expect(target(desktop, unlocked)?.showsDesktop == true)
+        #expect(target(desktop, unlocked)?.ramps == true)
+    }
+
+    /// The source stays chosen while the video plays everywhere, but only shows in
+    /// lock-screen-only mode.
+    @Test
+    func `desktop source needs lock screen mode`() {
+        let state = run([prefs { $0.desktopSource = desktopImage }, acquire(desktop)])
+        #expect(target(desktop, state)?.showsDesktop == false)
+        #expect(target(desktop, state)?.desktopSource == nil)
+        #expect(policy(desktop, state) == .full)
+    }
+
+    @Test
+    func `previews keep the video`() {
+        let state = run([prefs { $0.alwaysPauseDesktop = true; $0.desktopSource = desktopImage }, acquire(preview, role: .preview)])
+        #expect(target(preview, state)?.showsDesktop == false)
+        #expect(target(preview, state)?.desktopSource == nil)
+    }
+
+    /// Display sleep must not flip the layer, or a wake would flash the video.
+    @Test
+    func `sleep keeps the desktop covered`() {
+        let state = run([prefs { $0.alwaysPauseDesktop = true; $0.desktopSource = desktopImage }, acquire(desktop), .displaysAsleepChanged(true)])
+        #expect(target(desktop, state)?.showsDesktop == true)
+        #expect(target(desktop, state)?.desktopPolicy == .paused)
+    }
+
+    @Test
+    func `choosing a desktop source fades it in`() {
+        let state = run([acquire(desktop), prefs { $0.alwaysPauseDesktop = true; $0.desktopSource = desktopImage }])
+        #expect(target(desktop, state)?.showsDesktop == true)
+        #expect(ramps(desktop, state) == true)
+    }
+
     @Test
     func `repeated lock state leaves state unchanged`() {
         let locked = run([acquire(desktop), .screenLockChanged(true)])

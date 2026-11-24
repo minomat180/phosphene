@@ -4,7 +4,7 @@ import Foundation
 /// Build a fully-populated WallpaperSettingsViewModelsXPC using Codable shims.
 /// Creates one SettingsItem per video in the library.
 func buildSettingsViewModelsXPC() async -> AnyObject? {
-    let bundleID = Bundle.main.bundleIdentifier ?? "glass.kagerou.phosphene.extension"
+    let bundleID = Bundle.main.bundleIdentifier ?? "io.github.minomat180.phosphene.extension"
     let library = VideoLibrary.shared
     let groupID = GroupID(id: "video-wallpapers")
 

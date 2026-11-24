@@ -7,7 +7,7 @@ import os
 /// (a BOOL setter Apple's WallpaperExtensionKit uses on every AVSBDL). Resolved via the
 /// ObjC runtime so the private selector never appears in a header; a no-op if the API
 /// ever disappears. Prevents the layer painting opaque black before its first frame.
-private func setDisallowsVideoLayerDisplayCompositing(_ layer: CALayer, _ flag: Bool) {
+func setDisallowsVideoLayerDisplayCompositing(_ layer: CALayer, _ flag: Bool) {
     let sel = NSSelectorFromString("_setDisallowsVideoLayerDisplayCompositing:")
     guard layer.responds(to: sel),
           let imp = class_getMethodImplementation(type(of: layer), sel) else { return }
@@ -22,6 +22,8 @@ final class VideoRenderer: @unchecked Sendable {
     let debugID: Int = VideoRenderer.idCounter.withLock { $0 += 1; return $0 }
 
     let displayLayer: AVSampleBufferDisplayLayer
+    /// False when the layer belongs to a `DesktopOverlay`, which keeps it in the tree.
+    private let ownsDisplayLayer: Bool
     let timebase: CMTimebase
     private let renderer: AVSampleBufferVideoRenderer
     private let queue = DispatchQueue(label: "video-renderer", qos: .userInitiated)
@@ -70,10 +72,13 @@ final class VideoRenderer: @unchecked Sendable {
     private var ptsOffset: CMTime = .zero
     private var lastEnqueuedEnd: CMTime = .zero
 
+    /// `displayLayer` plays into a layer already in the tree (the desktop overlay's)
+    /// instead of adding a new one.
     static func create(
         rootLayer: CALayer,
         videoURL: URL,
         stillImage: CGImage? = nil,
+        displayLayer existingLayer: AVSampleBufferDisplayLayer? = nil,
     ) async throws -> VideoRenderer {
         let asset = AVURLAsset(url: videoURL)
         let tracks = try await asset.loadTracks(withMediaType: .video)
@@ -81,6 +86,17 @@ final class VideoRenderer: @unchecked Sendable {
             throw CocoaError(.fileReadCorruptFile, userInfo: [
                 NSLocalizedDescriptionKey: "No video track found in \(videoURL.lastPathComponent)",
             ])
+        }
+
+        if let existingLayer {
+            return VideoRenderer(
+                rootLayer: rootLayer,
+                displayLayer: existingLayer,
+                ownsDisplayLayer: false,
+                asset: asset,
+                videoTrack: track,
+                stillImage: stillImage,
+            )
         }
 
         let displayLayer = AVSampleBufferDisplayLayer()
@@ -103,6 +119,7 @@ final class VideoRenderer: @unchecked Sendable {
         return VideoRenderer(
             rootLayer: rootLayer,
             displayLayer: displayLayer,
+            ownsDisplayLayer: true,
             asset: asset,
             videoTrack: track,
             stillImage: stillImage,
@@ -112,11 +129,13 @@ final class VideoRenderer: @unchecked Sendable {
     private init(
         rootLayer: CALayer,
         displayLayer: AVSampleBufferDisplayLayer,
+        ownsDisplayLayer: Bool,
         asset: AVURLAsset,
         videoTrack: AVAssetTrack,
         stillImage: CGImage?,
     ) {
         self.displayLayer = displayLayer
+        self.ownsDisplayLayer = ownsDisplayLayer
         self.renderer = displayLayer.sampleBufferRenderer
         self.asset = asset
         self.videoTrack = videoTrack
@@ -145,7 +164,9 @@ final class VideoRenderer: @unchecked Sendable {
         // once rate=1.
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        rootLayer.addSublayer(displayLayer)
+        if ownsDisplayLayer {
+            rootLayer.addSublayer(displayLayer)
+        }
         traceLog("  [Renderer #\(debugID)] CREATED for \(asset.url.lastPathComponent), displayLayer=\(ObjectIdentifier(displayLayer)), rootLayer sublayers=\((rootLayer.sublayers?.count ?? 0))")
         if let stillImage, let stillBuffer = makeStillSampleBuffer(from: stillImage) {
             // Tag DisplayImmediately so the still is shown the instant it's enqueued,
@@ -308,7 +329,7 @@ final class VideoRenderer: @unchecked Sendable {
     /// previously enqueued/displayed images regardless of timestamps (per
     /// AVQueuedSampleBufferRendering docs). Used for the first frame of a switched
     /// video so the swap is instant and doesn't wait on the control timebase.
-    private static func setDisplayImmediately(_ sample: CMSampleBuffer) {
+    static func setDisplayImmediately(_ sample: CMSampleBuffer) {
         guard let attachments = CMSampleBufferGetSampleAttachmentsArray(sample, createIfNecessary: true) else { return }
         let count = CFArrayGetCount(attachments)
         for i in 0 ..< count {
@@ -351,7 +372,9 @@ final class VideoRenderer: @unchecked Sendable {
             currentReader?.cancelReading()
             nextReader?.cancelReading()
         }
-        displayLayer.removeFromSuperlayer()
+        if ownsDisplayLayer {
+            displayLayer.removeFromSuperlayer()
+        }
     }
 
     /// Adopt the task that feeds this renderer its targets; `stop()` cancels it.

@@ -12,7 +12,7 @@ import os
 final class ShuffleController: @unchecked Sendable {
     static let shared = ShuffleController()
 
-    private let queue = DispatchQueue(label: "glass.kagerou.phosphene.shuffle")
+    private let queue = DispatchQueue(label: "io.github.minomat180.phosphene.shuffle")
     private let lock = OSAllocatedUnfairLock(initialState: State())
     private var timer: (any DispatchSourceTimer)?
 

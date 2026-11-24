@@ -74,7 +74,7 @@ final class OcclusionMonitor {
         }
 
         // Poll to catch window move/resize (no notification for those)
-        let activity = NSBackgroundActivityScheduler(identifier: "glass.kagerou.phosphene.occlusionPoll")
+        let activity = NSBackgroundActivityScheduler(identifier: "io.github.minomat180.phosphene.occlusionPoll")
         activity.repeats = true
         activity.interval = 10
         activity.tolerance = 5

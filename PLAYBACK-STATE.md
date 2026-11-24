@@ -22,6 +22,7 @@ How the extension decides whether each wallpaper surface plays, and how that dec
 | `SystemEvents.swift`, `PrefsSource.swift`, `PowerMonitor.swift` | Event sources: display sleep/wake, loginwindow lock/unlock, the app's prefs file, power/thermal/Game Mode/backlight. |
 | `WallpaperXPCHandler.swift` | The agent protocol. Emits `surfaceAcquired`, `agentUpdate`, `surfaceRemoved`, `shufflePicked`, `videoRemoved`. |
 | `SurfaceRegistry.swift` | Resources only: remote `CAContext`, root layer, renderer per surface, and the WallpaperID → surface map. |
+| `DesktopOverlay.swift` | The desktop source (image or second video) in a display layer above the video. Follows the same target: `showsDesktop` fades it over the video on the unlocked desktop, `desktopPolicy` drives its own video. |
 | `VideoRenderer.swift` | The AVFoundation pipeline. Its pause, ramp, and deep-pause state is confined to its own serial queue. |
 
 ## Rules the design enforces

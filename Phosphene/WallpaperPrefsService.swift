@@ -1,10 +1,11 @@
 import AppKit
 import Foundation
 import os
+import UniformTypeIdentifiers
 
 /// Reads/writes shared preferences to the extension container and signals via Darwin notification.
 ///
-/// The extension reads the same file on startup and when it receives `glass.kagerou.phosphene.prefsChanged`.
+/// The extension reads the same file on startup and when it receives `io.github.minomat180.phosphene.prefsChanged`.
 /// The extension writes a separate state file (`phosphene-state.json`) with `isActive`, which this service observes.
 @MainActor
 @Observable
@@ -35,6 +36,12 @@ final class WallpaperPrefsService {
 
     var pauseWhenOccluded = false {
         didSet { guard pauseWhenOccluded != oldValue else { return }; savePrefs() }
+    }
+
+    /// What the unlocked desktop shows instead of the paused video in lock-screen-only
+    /// mode. Kept while another mode is on. Set through ``setDesktopSource(from:)``.
+    private(set) var desktopSource: DesktopSource? {
+        didSet { guard desktopSource != oldValue else { return }; savePrefs() }
     }
 
     /// Updated by OcclusionMonitor when desktop visibility changes.
@@ -105,7 +112,12 @@ final class WallpaperPrefsService {
 
     private static var extensionDocsURL: URL {
         FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Containers/glass.kagerou.phosphene.extension/Data/Documents")
+            .appendingPathComponent("Library/Containers/io.github.minomat180.phosphene.extension/Data/Documents")
+    }
+
+    /// The extension's container, where the prefs, state and agent result files live.
+    static var extensionDocumentsURL: URL {
+        extensionDocsURL
     }
 
     private static var prefsURL: URL {
@@ -116,9 +128,32 @@ final class WallpaperPrefsService {
         extensionDocsURL.appendingPathComponent("phosphene-state.json")
     }
 
+    /// The desktop wallpaper as the extension reads it from the prefs file; the file
+    /// sits in the extension's `Documents/Desktop/`.
+    struct DesktopSource: Codable, Equatable {
+        enum Kind: String, Codable {
+            case image
+            case video
+        }
+
+        var kind: Kind
+        var file: String
+        /// The name of the file the user picked, for display.
+        var originalName: String?
+
+        var url: URL {
+            WallpaperPrefsService.desktopFolderURL.appendingPathComponent(file)
+        }
+    }
+
+    private static var desktopFolderURL: URL {
+        extensionDocsURL.appendingPathComponent("Desktop", isDirectory: true)
+    }
+
     private struct PrefsFile: Codable {
         var userPaused: Bool
         var alwaysPauseDesktop: Bool
+        var desktopSource: DesktopSource?
         var pauseWhenOccluded: Bool
         var desktopOccluded: Bool
         var occludedDisplays: Set<UInt32>?
@@ -126,9 +161,20 @@ final class WallpaperPrefsService {
         var pausedDisplays: Set<UInt32>?
         var screenSaverIsOurs: Bool?
 
-        init(userPaused: Bool, alwaysPauseDesktop: Bool, pauseWhenOccluded: Bool = false, desktopOccluded: Bool = false, occludedDisplays: Set<UInt32>? = nil, fullscreenDisplays: Set<UInt32>? = nil, pausedDisplays: Set<UInt32>? = nil, screenSaverIsOurs: Bool? = nil) {
+        init(
+            userPaused: Bool,
+            alwaysPauseDesktop: Bool,
+            desktopSource: DesktopSource? = nil,
+            pauseWhenOccluded: Bool = false,
+            desktopOccluded: Bool = false,
+            occludedDisplays: Set<UInt32>? = nil,
+            fullscreenDisplays: Set<UInt32>? = nil,
+            pausedDisplays: Set<UInt32>? = nil,
+            screenSaverIsOurs: Bool? = nil,
+        ) {
             self.userPaused = userPaused
             self.alwaysPauseDesktop = alwaysPauseDesktop
+            self.desktopSource = desktopSource
             self.pauseWhenOccluded = pauseWhenOccluded
             self.desktopOccluded = desktopOccluded
             self.occludedDisplays = occludedDisplays
@@ -180,7 +226,7 @@ final class WallpaperPrefsService {
             { _, _, _, _, _ in
                 DispatchQueue.main.async { WallpaperPrefsService.shared.restartStuckAgent() }
             },
-            "glass.kagerou.phosphene.agentStuck" as CFString,
+            "io.github.minomat180.phosphene.agentStuck" as CFString,
             nil,
             .deliverImmediately,
         )
@@ -244,6 +290,52 @@ final class WallpaperPrefsService {
         return VideoDeploymentService.videoURL(for: entry)
     }
 
+    // MARK: - Desktop wallpaper
+
+    enum DesktopSourceError: LocalizedError {
+        case unsupportedType
+
+        var errorDescription: String? {
+            String(localized: "Choose an image or a video.")
+        }
+    }
+
+    /// Copy `url` into the extension's container and show it on the desktop. Each pick
+    /// gets a fresh name, so the extension always sees a new source.
+    func setDesktopSource(from url: URL) throws {
+        let type = UTType(filenameExtension: url.pathExtension)
+        let kind: DesktopSource.Kind
+        if type?.conforms(to: .image) == true {
+            kind = .image
+        } else if type?.conforms(to: .audiovisualContent) == true {
+            kind = .video
+        } else {
+            throw DesktopSourceError.unsupportedType
+        }
+        let folder = Self.desktopFolderURL
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let file = "\(UUID().uuidString).\(url.pathExtension.lowercased())"
+        try FileManager.default.copyItem(at: url, to: folder.appendingPathComponent(file))
+        desktopSource = DesktopSource(kind: kind, file: file, originalName: url.lastPathComponent)
+        alwaysPauseDesktop = true
+        userPaused = false
+        removeUnusedDesktopFiles()
+    }
+
+    /// Back to the paused video on the desktop.
+    func clearDesktopSource() {
+        desktopSource = nil
+        removeUnusedDesktopFiles()
+    }
+
+    private func removeUnusedDesktopFiles() {
+        let folder = Self.desktopFolderURL
+        guard let files = try? FileManager.default.contentsOfDirectory(atPath: folder.path) else { return }
+        for file in files where file != desktopSource?.file {
+            try? FileManager.default.removeItem(at: folder.appendingPathComponent(file))
+        }
+    }
+
     // MARK: - Prefs Persistence
 
     private func loadPrefs() {
@@ -257,6 +349,7 @@ final class WallpaperPrefsService {
             let prefs = try JSONDecoder().decode(PrefsFile.self, from: data)
             userPaused = prefs.userPaused
             alwaysPauseDesktop = prefs.alwaysPauseDesktop
+            desktopSource = prefs.desktopSource.flatMap { FileManager.default.fileExists(atPath: $0.url.path) ? $0 : nil }
             pauseWhenOccluded = prefs.pauseWhenOccluded
             desktopOccluded = prefs.desktopOccluded
             occludedDisplays = prefs.occludedDisplays ?? []
@@ -271,6 +364,7 @@ final class WallpaperPrefsService {
         let prefs = PrefsFile(
             userPaused: userPaused,
             alwaysPauseDesktop: alwaysPauseDesktop,
+            desktopSource: desktopSource,
             pauseWhenOccluded: pauseWhenOccluded,
             desktopOccluded: desktopOccluded,
             occludedDisplays: occludedDisplays.isEmpty ? nil : occludedDisplays,
@@ -284,7 +378,7 @@ final class WallpaperPrefsService {
         let center = CFNotificationCenterGetDarwinNotifyCenter()
         CFNotificationCenterPostNotification(
             center,
-            CFNotificationName("glass.kagerou.phosphene.prefsChanged" as CFString),
+            CFNotificationName("io.github.minomat180.phosphene.prefsChanged" as CFString),
             nil,
             nil,
             true,
@@ -320,7 +414,7 @@ final class WallpaperPrefsService {
                     WallpaperPrefsService.shared.loadState()
                 }
             },
-            "glass.kagerou.phosphene.stateChanged" as CFString,
+            "io.github.minomat180.phosphene.stateChanged" as CFString,
             nil,
             .deliverImmediately,
         )
@@ -334,7 +428,7 @@ final class WallpaperPrefsService {
     private static let spacesConfigURL: URL = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Library/Preferences/com.apple.spaces.plist")
 
-    private static let extensionBundleID = "glass.kagerou.phosphene.extension"
+    private static let extensionBundleID = "io.github.minomat180.phosphene.extension"
 
     private func checkSystemWallpaper() {
         guard let data = try? Data(contentsOf: Self.wallpaperStoreURL),

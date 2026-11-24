@@ -76,7 +76,7 @@ final class PhospheneExtension: NSObject, AppExtension {
                 SurfaceRegistry.shared.reloadReplacedVideos()
                 SettingsPush.libraryDidChange()
             },
-            "glass.kagerou.phosphene.libraryChanged" as CFString,
+            "io.github.minomat180.phosphene.libraryChanged" as CFString,
             nil,
             .deliverImmediately,
         )

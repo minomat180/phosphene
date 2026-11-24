@@ -28,7 +28,7 @@ struct SendableBox<T>: @unchecked Sendable { let value: T }
 /// serial queue — mirroring Apple's single `Controller`-actor `AsyncQueue` — so an
 /// invalidate can't slip between the halves of an acquire.
 enum Lifecycle {
-    static let queue = DispatchQueue(label: "glass.kagerou.phosphene.lifecycle")
+    static let queue = DispatchQueue(label: "io.github.minomat180.phosphene.lifecycle")
 
     /// Pending per-surface teardown timers. Touched only on `queue`.
     nonisolated(unsafe) static var teardownTimers: [SurfaceKey: DispatchWorkItem] = [:]
@@ -319,6 +319,7 @@ final class WallpaperXPCHandler: NSObject, WallpaperExtensionXPCProtocol {
         if let cachedStill {
             rootLayer.contents = cachedStill
         }
+        let overlay = DesktopOverlay(rootLayer: rootLayer)
         caContext.layer = rootLayer
         CATransaction.flush()
 
@@ -329,9 +330,10 @@ final class WallpaperXPCHandler: NSObject, WallpaperExtensionXPCProtocol {
         // Install the surface now (renderer added async) so a concurrent acquire for the
         // same surface reuses this context instead of creating another.
         registry.install(
-            HostedSurface(caContext: caContext, contextId: contextId, rootLayer: rootLayer, renderer: nil, displayID: displayID, videoID: choiceConfiguration, isPreview: isPreview, destSize: destSize, scaleFactor: scaleFactor),
+            HostedSurface(caContext: caContext, contextId: contextId, rootLayer: rootLayer, renderer: nil, overlay: overlay, displayID: displayID, videoID: choiceConfiguration, isPreview: isPreview, destSize: destSize, scaleFactor: scaleFactor),
             for: key,
         )
+        Task { @MainActor [overlay, key] in PlaybackStore.shared.follow(overlay, surface: key) }
         extensionLog("  Created context \(contextId) for \(key) at \(destSize) @\(scaleFactor)x")
         reconcileSurfaceGeometry(for: key, because: "acquire")
 

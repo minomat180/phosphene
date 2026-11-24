@@ -2,7 +2,7 @@ import CoreVideo
 import Foundation
 import os
 
-nonisolated let weLog = Logger(subsystem: "glass.kagerou.phosphene", category: "WallpaperEngine")
+nonisolated let weLog = Logger(subsystem: "io.github.minomat180.phosphene", category: "WallpaperEngine")
 
 /// Draws a ``WEScene`` offscreen, one frame per call, at an output size.
 ///

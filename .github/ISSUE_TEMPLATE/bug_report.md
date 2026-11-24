@@ -36,7 +36,7 @@ assignees: kageroumado
 
 After reproducing, note any of these:
 
-- `~/Library/Containers/glass.kagerou.phosphene.extension/Data/Documents/phosphene-state.json`
+- `~/Library/Containers/io.github.minomat180.phosphene.extension/Data/Documents/phosphene-state.json`
 - Is the extension process running? (`pgrep -fl PhospheneExtension`)
 - Is `WallpaperAgent` running? (`pgrep -x WallpaperAgent`)
 
@@ -45,7 +45,7 @@ After reproducing, note any of these:
 Attach or paste the relevant lines from:
 
 ```
-~/Library/Containers/glass.kagerou.phosphene.extension/Data/Documents/extension.log
+~/Library/Containers/io.github.minomat180.phosphene.extension/Data/Documents/extension.log
 ```
 
 This log records wallpaper switches, presentation/state changes, teardowns, and errors.
@@ -57,13 +57,13 @@ per-connection XPC churn, snapshots). If the issue isn't clear from the log abov
 verbose logging, reproduce once, and attach the fuller log:
 
 ```sh
-touch ~/Library/Containers/glass.kagerou.phosphene.extension/Data/Documents/VERBOSE_LOG
+touch ~/Library/Containers/io.github.minomat180.phosphene.extension/Data/Documents/VERBOSE_LOG
 killall WallpaperAgent            # relaunches the extension so it picks up the flag
 # ... reproduce the problem ...
 # then attach extension.log
 
 # disable verbose logging afterwards:
-trash ~/Library/Containers/glass.kagerou.phosphene.extension/Data/Documents/VERBOSE_LOG
+trash ~/Library/Containers/io.github.minomat180.phosphene.extension/Data/Documents/VERBOSE_LOG
 killall WallpaperAgent
 ```
 

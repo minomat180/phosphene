@@ -24,7 +24,7 @@ struct PhospheneApp: App {
             // refuses every process not signed by its team, a terminal included.
             if UserDefaults.standard.bool(forKey: "PHOSPHENE_EXPORT_DIAGNOSTICS") {
                 let documents = FileManager.default.homeDirectoryForCurrentUser
-                    .appendingPathComponent("Library/Containers/glass.kagerou.phosphene.extension/Data/Documents")
+                    .appendingPathComponent("Library/Containers/io.github.minomat180.phosphene.extension/Data/Documents")
                 // The user's own temporary folder: `/tmp` is shared, and a fixed name there can
                 // be planted as a link by another account before this runs.
                 let out = FileManager.default.temporaryDirectory.appendingPathComponent("phosphene-diagnostics")
@@ -148,6 +148,7 @@ struct PhospheneApp: App {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_: Notification) {
+        AgentCommands.listen()
         // The app is a menu-bar accessory; opening the Library promotes it to a regular
         // app so the window gets a Dock icon and menu bar. Demote it back when the last
         // regular-level window closes. The check is deferred one runloop turn because
@@ -173,6 +174,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Task { @MainActor in
             for url in urls {
                 guard url.scheme == "phosphene" else { continue }
+                if await AgentCommands.handle(url) {
+                    continue
+                }
                 switch url.host {
                 case "add-video":
                     PhospheneManager.shared?.openVideoChooser()

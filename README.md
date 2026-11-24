@@ -2,6 +2,27 @@
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
+> **This is a vibe-coded fork** of [kageroumado/phosphene](https://github.com/kageroumado/phosphene),
+> written with an AI coding agent for one person's Mac. It adds one feature: a **separate desktop
+> wallpaper**. The Phosphene video plays on the lock screen, and once you unlock, the desktop
+> crossfades to an image or a second video of your choice. It is not affiliated with or supported
+> by the upstream project; report problems here, not there.
+>
+> - **Use it:** in the menu bar, set Playback to **Lock Screen**, then **Desktop → Choose…** and
+>   pick an image or a video. **Remove** goes back to the paused video on the desktop.
+> - **How it works:** macOS has one wallpaper surface for both the lock screen and the desktop.
+>   Each surface gets a second display layer above the video
+>   ([`DesktopOverlay.swift`](PhospheneExtension/DesktopOverlay.swift)); it fades out for the lock
+>   screen and back in when the agent presents the desktop again.
+> - **Scripts and agents:** `scripts/phosphenectl` does the same without the menu bar:
+>   `desktop <file>`, `desktop --clear`, `playback everywhere|lockscreen|paused`,
+>   `add-video <file>`, `restart-agent`, `status`, `log`. Each prints the app's answer.
+> - **Build and install:** `scripts/build-local.sh --install` (ad-hoc signed, this Mac only). The
+>   fork uses its own bundle IDs (`io.github.minomat180.phosphene`), so it never touches the
+>   upstream app's library or updates, and its updater checks this fork's releases.
+>
+> Everything below is the upstream README.
+
 Phosphene adds your videos to System Settings → Wallpaper through the same wallpaper pipeline as Apple’s Aerials. macOS plays them on the desktop and lock screen, even after you quit the app. It also turns **Wallpaper Engine** wallpapers from the Steam Workshop into video wallpapers.
 
 <a href="https://kagerou.glass/get/phosphene?from=readme"><img src=".github/download.svg" alt="Download Phosphene for Mac" width="360" height="80"></a>

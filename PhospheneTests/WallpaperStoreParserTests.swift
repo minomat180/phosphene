@@ -11,7 +11,7 @@ struct WallpaperStoreParserTests {
     typealias DisplayInfo = WallpaperStoreParser.DisplayInfo
     typealias SpaceInfo = WallpaperStoreParser.SpaceInfo
 
-    private static let ours = "glass.kagerou.phosphene.extension"
+    private static let ours = "io.github.minomat180.phosphene.extension"
     private static let foreign = "com.apple.wallpaper.choice.sequoia"
 
     private static let displayA = "AAAAAAAA-0000-0000-0000-000000000001"

@@ -10,17 +10,17 @@ Open an issue with the Bug report template. The single most useful thing you can
 attach is the extension log:
 
 ```
-~/Library/Containers/glass.kagerou.phosphene.extension/Data/Documents/extension.log
+~/Library/Containers/io.github.minomat180.phosphene.extension/Data/Documents/extension.log
 ```
 
 If the default log is inconclusive, enable verbose logging, reproduce once, and
 attach the fuller log:
 
 ```sh
-touch ~/Library/Containers/glass.kagerou.phosphene.extension/Data/Documents/VERBOSE_LOG
+touch ~/Library/Containers/io.github.minomat180.phosphene.extension/Data/Documents/VERBOSE_LOG
 killall WallpaperAgent            # relaunches the extension so it picks up the flag
 # ... reproduce ...
-trash ~/Library/Containers/glass.kagerou.phosphene.extension/Data/Documents/VERBOSE_LOG
+trash ~/Library/Containers/io.github.minomat180.phosphene.extension/Data/Documents/VERBOSE_LOG
 killall WallpaperAgent
 ```
 
@@ -60,11 +60,11 @@ cannot read it), and open the library at launch:
 APP="/Volumes/Ugreen/Scratch/phosphene-wedev/Phosphene WE Prototype.app"
 cp -R /Volumes/Ugreen/Build/phosphene-wedev/Build/Products/Debug/Phosphene.app "$APP"
 trash "$APP/Contents/Extensions"
-plutil -replace CFBundleIdentifier -string glass.kagerou.phosphene.wedev "$APP/Contents/Info.plist"
+plutil -replace CFBundleIdentifier -string io.github.minomat180.phosphene.wedev "$APP/Contents/Info.plist"
 plutil -remove CFBundleURLTypes "$APP/Contents/Info.plist"
 codesign --force --deep -s "Developer ID Application: <your identity>" "$APP"
-defaults write glass.kagerou.phosphene.wedev launchAtLogin -bool false
-defaults write glass.kagerou.phosphene.wedev autoInstallUpdates -bool false
+defaults write io.github.minomat180.phosphene.wedev launchAtLogin -bool false
+defaults write io.github.minomat180.phosphene.wedev autoInstallUpdates -bool false
 open -n "$APP" --args -PHOSPHENE_OPEN_LIBRARY YES
 ```
 

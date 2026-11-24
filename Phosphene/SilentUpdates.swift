@@ -29,7 +29,7 @@ import TiptoeGitHub
 final class SilentUpdates {
     static let shared = SilentUpdates()
 
-    static let owner = "kageroumado"
+    static let owner = "minomat180"
     static let repo = "phosphene"
 
     /// The chip announces a release within hours of it shipping, so a fix reaches people the
