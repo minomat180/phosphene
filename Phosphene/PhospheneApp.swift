@@ -149,6 +149,7 @@ struct PhospheneApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_: Notification) {
         AgentCommands.listen()
+        LockScreenAwake.listen()
         // The app is a menu-bar accessory; opening the Library promotes it to a regular
         // app so the window gets a Dock icon and menu bar. Demote it back when the last
         // regular-level window closes. The check is deferred one runloop turn because

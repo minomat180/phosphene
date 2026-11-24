@@ -14,6 +14,9 @@
 >   Each surface gets a second display layer above the video
 >   ([`DesktopOverlay.swift`](PhospheneExtension/DesktopOverlay.swift)); it fades out for the lock
 >   screen and back in when the agent presents the desktop again.
+> - **Lock screen stays lit:** macOS turns a locked display off after about 30 seconds. While the
+>   screen is locked, the app keeps the display on until your normal display-off time
+>   ([`LockScreenAwake.swift`](Phosphene/LockScreenAwake.swift)). It never keeps the Mac awake.
 > - **Scripts and agents:** `scripts/phosphenectl` does the same without the menu bar:
 >   `desktop <file>`, `desktop --clear`, `playback everywhere|lockscreen|paused`,
 >   `add-video <file>`, `restart-agent`, `status`, `log`. Each prints the app's answer.
