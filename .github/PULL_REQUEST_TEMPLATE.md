@@ -24,7 +24,7 @@
 - **Result**: <!-- what you observed; screenshots / screen recordings welcome -->
 
 <!-- If the change touches acquire / teardown / presentation policy, capture the extension log while reproducing, ideally with verbose logging on (see the bug-report template for the VERBOSE_LOG flag):
-     ~/Library/Containers/glass.kagerou.phosphene.extension/Data/Documents/extension.log -->
+     ~/Library/Containers/io.github.minomat180.phosphene.extension/Data/Documents/extension.log -->
 
 ## Risk / regressions
 

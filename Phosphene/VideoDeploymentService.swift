@@ -19,7 +19,7 @@ enum VideoDeploymentService {
     /// Extension container where the wallpaper extension looks for video files.
     private static var extensionDocsURL: URL {
         FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Containers/glass.kagerou.phosphene.extension/Data/Documents")
+            .appendingPathComponent("Library/Containers/io.github.minomat180.phosphene.extension/Data/Documents")
     }
 
     /// The library folder holding one subfolder per video (media + metadata + thumbnail).
@@ -401,7 +401,7 @@ enum VideoDeploymentService {
     }
 
     /// Notification posted in-process when the library changes.
-    static let libraryChangedNotification = Notification.Name("glass.kagerou.phosphene.libraryChanged")
+    static let libraryChangedNotification = Notification.Name("io.github.minomat180.phosphene.libraryChanged")
 
     /// Generate a thumbnail.jpg from the first frame of a video.
     /// Uses async/await so the caller can coordinate thumbnail availability.
@@ -439,7 +439,7 @@ enum VideoDeploymentService {
         let center = CFNotificationCenterGetDarwinNotifyCenter()
         CFNotificationCenterPostNotification(
             center,
-            CFNotificationName("glass.kagerou.phosphene.libraryChanged" as CFString),
+            CFNotificationName("io.github.minomat180.phosphene.libraryChanged" as CFString),
             nil,
             nil,
             true,
@@ -465,7 +465,7 @@ enum VideoDeploymentService {
             .appendingPathComponent("com.apple.wallpaper.agent/com.apple.wallpaper.view-model-cache")
         for surface in ["desktop", "screenSaver"] {
             let file = cacheDir
-                .appendingPathComponent("extension-glass.kagerou.phosphene.extension-\(surface)")
+                .appendingPathComponent("extension-io.github.minomat180.phosphene.extension-\(surface)")
             try? FileManager.default.removeItem(at: file)
         }
     }

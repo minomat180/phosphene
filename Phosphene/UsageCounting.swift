@@ -32,7 +32,7 @@ nonisolated enum UsageCounting {
     /// The crash reports macOS writes for the app carry this process name.
     static let processName = "Phosphene"
 
-    private static let logger = Logger(subsystem: "glass.kagerou.phosphene", category: "UsageCounting")
+    private static let logger = Logger(subsystem: "io.github.minomat180.phosphene", category: "UsageCounting")
 
     static let client = Digoxin(configuration: .init(
         app: app,

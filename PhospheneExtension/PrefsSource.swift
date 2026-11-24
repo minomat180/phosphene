@@ -1,7 +1,7 @@
 import Foundation
 
 /// Turns the app-written `phosphene-prefs.json` into `prefsLoaded` events: once at
-/// launch and again on every `glass.kagerou.phosphene.prefsChanged` notification.
+/// launch and again on every `io.github.minomat180.phosphene.prefsChanged` notification.
 enum PrefsSource {
     private static var prefsURL: URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -14,7 +14,7 @@ enum PrefsSource {
             CFNotificationCenterGetDarwinNotifyCenter(),
             nil,
             { _, _, _, _, _ in PrefsSource.postCurrent() },
-            "glass.kagerou.phosphene.prefsChanged" as CFString,
+            "io.github.minomat180.phosphene.prefsChanged" as CFString,
             nil,
             .deliverImmediately,
         )

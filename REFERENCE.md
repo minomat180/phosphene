@@ -18,7 +18,7 @@
                   └──────────────┬───────────────┘
                                  ▼
                   Extension sandbox container
-                  (~/Library/Containers/glass.kagerou.phosphene.extension
+                  (~/Library/Containers/io.github.minomat180.phosphene.extension
                        /Data/Documents)
                   • Video library + variants
                   • WallpaperPrefs.plist
@@ -50,7 +50,7 @@
 The extension writes a rotating log (1 MB × 3) to:
 
 ```
-~/Library/Containers/glass.kagerou.phosphene.extension/Data/Documents/extension.log
+~/Library/Containers/io.github.minomat180.phosphene.extension/Data/Documents/extension.log
 ```
 
 By default it records only the meaningful events — wallpaper switches, presentation/state
@@ -64,14 +64,14 @@ Create a marker file in the extension's container, then restart the wallpaper ag
 extension relaunches and picks it up:
 
 ```sh
-touch ~/Library/Containers/glass.kagerou.phosphene.extension/Data/Documents/VERBOSE_LOG
+touch ~/Library/Containers/io.github.minomat180.phosphene.extension/Data/Documents/VERBOSE_LOG
 killall WallpaperAgent
 ```
 
 Disable it again by removing the marker and restarting the agent:
 
 ```sh
-trash ~/Library/Containers/glass.kagerou.phosphene.extension/Data/Documents/VERBOSE_LOG   # or rm
+trash ~/Library/Containers/io.github.minomat180.phosphene.extension/Data/Documents/VERBOSE_LOG   # or rm
 killall WallpaperAgent
 ```
 

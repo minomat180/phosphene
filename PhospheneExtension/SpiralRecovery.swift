@@ -3,7 +3,7 @@ import os
 
 enum SpiralRecovery {
     /// Darwin notification the main (unsandboxed) app listens for to `killall WallpaperAgent`.
-    static let agentStuckNotification = "glass.kagerou.phosphene.agentStuck"
+    static let agentStuckNotification = "io.github.minomat180.phosphene.agentStuck"
 
     /// Consecutive empty connections that trigger recovery. Normal operation never produces
     /// consecutive empties (every real connection serves a method, which resets the count),
