@@ -392,6 +392,16 @@
         }
       }
     },
+    "An image or a video for the unlocked desktop. The wallpaper video keeps playing on the lock screen.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用于解锁后桌面的一张图片或一个视频。墙纸视频会继续在锁定屏幕上播放。"
+          }
+        }
+      }
+    },
     "Application": {
       "localizations": {
         "zh-Hans": {
@@ -522,6 +532,16 @@
         }
       }
     },
+    "Choose Desktop Wallpaper": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选取桌面墙纸"
+          }
+        }
+      }
+    },
     "Choose a Phosphene video in System Settings › Wallpaper.": {
       "localizations": {
         "zh-Hans": {
@@ -542,12 +562,42 @@
         }
       }
     },
+    "Choose an image or a video for the desktop. The wallpaper video keeps playing on the lock screen.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "为桌面选取一张图片或一个视频。墙纸视频会继续在锁定屏幕上播放。"
+          }
+        }
+      }
+    },
+    "Choose an image or a video.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请选取一张图片或一个视频。"
+          }
+        }
+      }
+    },
     "Choose the wallpaper in macOS Wallpaper Settings": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "在 macOS“墙纸”设置中选取墙纸"
+          }
+        }
+      }
+    },
+    "Choose…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选取…"
           }
         }
       }
@@ -730,6 +780,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在删除这台 Mac 发送的内容…"
+          }
+        }
+      }
+    },
+    "Desktop": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "桌面"
           }
         }
       }
@@ -1666,6 +1726,16 @@
         }
       }
     },
+    "Paused video": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已暂停的视频"
+          }
+        }
+      }
+    },
     "Paused — Display Covered": {
       "localizations": {
         "zh-Hans": {
@@ -2065,6 +2135,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "在资料库中显示"
+          }
+        }
+      }
+    },
+    "Show the paused video on the desktop again": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在桌面上重新显示已暂停的视频"
           }
         }
       }

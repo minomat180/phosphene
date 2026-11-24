@@ -2,6 +2,24 @@
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
+> **这是一个“vibe coding”分支**，派生自 [kageroumado/phosphene](https://github.com/kageroumado/phosphene)，
+> 由 AI 编程助手为一个人的 Mac 编写。它只增加了一项功能：**独立的桌面墙纸**。Phosphene 视频在锁定屏幕上播放，
+> 解锁后桌面会淡入你选择的图片或第二个视频。本分支与上游项目无关，也不受其支持；遇到问题请在这里反馈，不要反馈给上游。
+>
+> - **使用方法：**在菜单栏中把“播放”设为**锁定屏幕**，然后点按**桌面 → 选取…**，选择一张图片或一个视频。
+>   **移除**会让桌面重新显示已暂停的视频。
+> - **原理：**macOS 的锁定屏幕和桌面共用同一个墙纸表面。每个表面在视频上方多了一个显示层
+>   （[`DesktopOverlay.swift`](PhospheneExtension/DesktopOverlay.swift)）：进入锁定屏幕时淡出，桌面再次出现时淡入。
+> - **锁定屏幕保持点亮：**macOS 会在锁定约 30 秒后关闭显示器。屏幕锁定期间，App 会让显示器保持点亮，
+>   直到你设置的正常关闭显示器时间（[`LockScreenAwake.swift`](Phosphene/LockScreenAwake.swift)）。它不会阻止 Mac 进入睡眠。
+> - **脚本与 AI 助手：**`scripts/phosphenectl` 无需菜单栏即可完成同样的操作：
+>   `desktop <文件>`、`desktop --clear`、`playback everywhere|lockscreen|paused`、
+>   `add-video <文件>`、`restart-agent`、`status`、`log`。每条命令都会输出 App 的回应。
+> - **构建与安装：**`scripts/build-local.sh --install`（临时签名，仅限本机）。本分支使用自己的套装 ID
+>   （`io.github.minomat180.phosphene`），不会影响上游 App 的资料库或更新，其更新检查也只针对本分支的发布。
+>
+> 以下为上游 README 的内容。
+
 Phosphene 通过与 Apple 航拍墙纸相同的墙纸管线，把你的视频添加到“系统设置”→“墙纸”。macOS 会在桌面和锁定屏幕上播放它们，即使退出 App 之后也一样。它还能把 Steam 创意工坊里的 **Wallpaper Engine** 壁纸变成视频墙纸。
 
 <a href="https://kagerou.glass/get/phosphene?from=readme"><img src=".github/download.zh-CN.svg" alt="下载 Mac 版 Phosphene" width="360" height="80"></a>
