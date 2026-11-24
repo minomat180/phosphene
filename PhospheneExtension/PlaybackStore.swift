@@ -2,6 +2,16 @@ import Foundation
 import Observation
 import os
 
+/// Something drawn per surface that follows that surface's target: the video renderer
+/// and the desktop overlay above it.
+protocol TargetFollower: AnyObject, Sendable {
+    var debugID: Int { get }
+    func apply(_ target: SurfaceTarget)
+    func setFollowTask(_ task: Task<Void, Never>)
+}
+
+extension VideoRenderer: TargetFollower {}
+
 /// One surface's current target, observed by that surface's renderer alone. Keeping
 /// each target in its own object means a change on one surface wakes only the
 /// renderer following it.
@@ -90,9 +100,9 @@ final class PlaybackStore {
     /// Make `renderer` follow `key`'s target for as long as it runs. The current target
     /// is applied before this returns, so a `start()` issued afterwards already plays
     /// or holds according to it.
-    func follow(_ renderer: VideoRenderer, surface key: SurfaceKey) {
+    func follow(_ renderer: some TargetFollower, surface key: SurfaceKey) {
         guard let cell = cells[key] else {
-            extensionLog("[Store] follow: no surface \(key) — renderer #\(renderer.debugID) held paused")
+            extensionLog("[Store] follow: no surface \(key) — \(type(of: renderer)) #\(renderer.debugID) held paused")
             renderer.apply(.paused)
             return
         }
@@ -159,7 +169,7 @@ final class PlaybackStore {
         UserDefaults.standard.set(published.currentVideoID, forKey: Keys.lastVideoID)
         CFNotificationCenterPostNotification(
             CFNotificationCenterGetDarwinNotifyCenter(),
-            CFNotificationName("glass.kagerou.phosphene.stateChanged" as CFString),
+            CFNotificationName("io.github.minomat180.phosphene.stateChanged" as CFString),
             nil, nil, true,
         )
         extensionLog("[Store] published: active=\(published.isActive) video=\(file.currentVideoName ?? "nil")")

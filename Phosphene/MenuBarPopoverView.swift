@@ -1,6 +1,7 @@
 import AVKit
 import Propofol
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct MenuBarPopoverView: View {
     @Bindable var manager: PhospheneManager
@@ -36,6 +37,9 @@ struct MenuBarPopoverView: View {
                 } else {
                     heroSection
                     playbackScopePicker
+                    if prefsService.playbackScope == .lockScreen {
+                        desktopSourceRow
+                    }
                 }
 
                 settingsSection
@@ -195,6 +199,73 @@ struct MenuBarPopoverView: View {
             height: 32,
             onTint: Theme.onAccent,
         )
+    }
+
+    // MARK: - Desktop wallpaper
+
+    /// What the desktop shows while the video plays only on the lock screen: the paused
+    /// video, or an image or video of its own.
+    private var desktopSourceRow: some View {
+        HStack(spacing: Theme.Space.sm) {
+            Image(systemName: desktopSourceSymbol)
+                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Desktop")
+                    .font(.system(size: 12, weight: .medium))
+                Text(desktopSourceName)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            Spacer(minLength: 0)
+            if prefsService.desktopSource != nil {
+                Button("Remove") {
+                    prefsService.clearDesktopSource()
+                }
+                .help("Show the paused video on the desktop again")
+            }
+            Button("Choose…") {
+                chooseDesktopSource()
+            }
+            .help("Choose an image or a video for the desktop. The wallpaper video keeps playing on the lock screen.")
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.small)
+        .padding(.horizontal, Theme.Space.sm)
+        .padding(.vertical, 6)
+        .glassCard()
+    }
+
+    private var desktopSourceSymbol: String {
+        switch prefsService.desktopSource?.kind {
+        case .image: "photo"
+        case .video: "film"
+        case nil: "pause.rectangle"
+        }
+    }
+
+    private var desktopSourceName: String {
+        guard let source = prefsService.desktopSource else {
+            return String(localized: "Paused video")
+        }
+        return source.originalName ?? source.file
+    }
+
+    private func chooseDesktopSource() {
+        let panel = NSOpenPanel()
+        panel.title = String(localized: "Choose Desktop Wallpaper")
+        panel.message = String(localized: "An image or a video for the unlocked desktop. The wallpaper video keeps playing on the lock screen.")
+        panel.allowedContentTypes = [.image, .movie]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        NSApp.activate()
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try prefsService.setDesktopSource(from: url)
+        } catch {
+            NSAlert(error: error).runModal()
+        }
     }
 
     // MARK: - Empty State

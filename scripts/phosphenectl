@@ -1,0 +1,98 @@
+#!/bin/sh
+# Drive Phosphene from a shell or an agent, without the menu bar.
+#
+#   phosphenectl desktop <file>          image or video on the desktop, video on the lock screen
+#   phosphenectl desktop --clear         paused video on the desktop again
+#   phosphenectl playback everywhere|lockscreen|paused
+#   phosphenectl add-video <file> [name] add a video to the library
+#   phosphenectl restart-agent           restart WallpaperAgent
+#   phosphenectl status                  prefs, extension state, last command result
+#   phosphenectl log [lines]             tail of the extension log
+#
+# Each command is a phosphene:// URL, posted to the running app as a distributed
+# notification (nothing takes focus); the app writes the outcome to agent-result.json,
+# which this prints.
+set -eu
+
+DOCS="$HOME/Library/Containers/io.github.minomat180.phosphene.extension/Data/Documents"
+RESULT="$DOCS/agent-result.json"
+
+usage() {
+  sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'
+  exit 2
+}
+
+urlencode() {
+  /usr/bin/python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$1"
+}
+
+abspath() {
+  /usr/bin/python3 -c 'import os, sys; print(os.path.abspath(os.path.expanduser(sys.argv[1])))' "$1"
+}
+
+# Send a URL and wait for a result newer than the request.
+send() {
+  before=$(stat -f %Fm "$RESULT" 2>/dev/null || echo 0)
+  pgrep -qx Phosphene || { open -g -a /Applications/Phosphene.app; sleep 2; }
+  /usr/bin/osascript -l JavaScript - "$1" >/dev/null <<'JS'
+ObjC.import("Foundation");
+function run(argv) {
+  $.NSDistributedNotificationCenter.defaultCenter
+    .postNotificationNameObjectUserInfoDeliverImmediately("io.github.minomat180.phosphene.command", argv[0], $(), true);
+}
+JS
+  i=0
+  while [ $i -lt 100 ]; do
+    now=$(stat -f %Fm "$RESULT" 2>/dev/null || echo 0)
+    if [ "$now" != "$before" ]; then
+      cat "$RESULT"; echo
+      grep -q '"ok" : true' "$RESULT"
+      return
+    fi
+    sleep 0.1
+    i=$((i + 1))
+  done
+  echo "No answer from Phosphene within 10 s (is the fork running from /Applications?)" >&2
+  return 1
+}
+
+[ $# -ge 1 ] || usage
+cmd=$1
+shift
+
+case "$cmd" in
+  desktop)
+    [ $# -eq 1 ] || usage
+    if [ "$1" = "--clear" ]; then
+      send "phosphene://desktop/clear"
+    else
+      send "phosphene://desktop?path=$(urlencode "$(abspath "$1")")"
+    fi
+    ;;
+  playback)
+    [ $# -eq 1 ] || usage
+    send "phosphene://playback?scope=$1"
+    ;;
+  add-video)
+    [ $# -ge 1 ] || usage
+    url="phosphene://add-video?path=$(urlencode "$(abspath "$1")")"
+    [ $# -ge 2 ] && url="$url&name=$(urlencode "$2")"
+    send "$url"
+    ;;
+  restart-agent)
+    send "phosphene://restart-agent"
+    ;;
+  status)
+    for f in phosphene-prefs.json phosphene-state.json agent-result.json; do
+      echo "== $f"
+      cat "$DOCS/$f" 2>/dev/null || echo "(none)"
+      echo
+    done
+    ;;
+  log)
+    tail -n "${1:-40}" "$DOCS/extension.log"
+    ;;
+  *)
+    usage
+    ;;
+esac

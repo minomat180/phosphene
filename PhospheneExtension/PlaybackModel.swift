@@ -24,10 +24,35 @@ nonisolated enum SurfaceRole: Equatable, Sendable {
     case preview
 }
 
+/// What the unlocked desktop shows instead of the video, which then plays only on the
+/// lock screen. The app copies the file into the extension's `Desktop/` folder and
+/// gives each pick a fresh name, so a new pick is always a new value.
+nonisolated struct DesktopSource: Codable, Equatable, Sendable, CustomStringConvertible {
+    enum Kind: String, Codable, Sendable {
+        case image
+        case video
+    }
+
+    var kind: Kind
+    /// File name inside `Documents/Desktop/`.
+    var file: String
+
+    var url: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Desktop", isDirectory: true)
+            .appendingPathComponent(file)
+    }
+
+    var description: String {
+        "\(kind.rawValue) \(file)"
+    }
+}
+
 /// Playback preferences written by the app to `phosphene-prefs.json`.
 nonisolated struct PlaybackPrefs: Decodable, Equatable, Sendable {
     var userPaused = false
     var alwaysPauseDesktop = false
+    var desktopSource: DesktopSource?
     var pauseWhenOccluded = false
     /// Every display is covered. Written by app versions that predate per-display
     /// occlusion, and still set when all displays are covered.
@@ -45,6 +70,7 @@ nonisolated struct PlaybackPrefs: Decodable, Equatable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         userPaused = try container.decodeIfPresent(Bool.self, forKey: .userPaused) ?? false
         alwaysPauseDesktop = try container.decodeIfPresent(Bool.self, forKey: .alwaysPauseDesktop) ?? false
+        desktopSource = try? container.decodeIfPresent(DesktopSource.self, forKey: .desktopSource)
         pauseWhenOccluded = try container.decodeIfPresent(Bool.self, forKey: .pauseWhenOccluded) ?? false
         desktopOccluded = try container.decodeIfPresent(Bool.self, forKey: .desktopOccluded) ?? false
         occludedDisplays = try container.decodeIfPresent(Set<UInt32>.self, forKey: .occludedDisplays) ?? []
@@ -56,12 +82,19 @@ nonisolated struct PlaybackPrefs: Decodable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case userPaused
         case alwaysPauseDesktop
+        case desktopSource
         case pauseWhenOccluded
         case desktopOccluded
         case occludedDisplays
         case fullscreenDisplays
         case pausedDisplays
         case screenSaverIsOurs
+    }
+
+    /// The desktop source applies in lock-screen-only mode; the app keeps it chosen
+    /// while another mode is on.
+    var activeDesktopSource: DesktopSource? {
+        alwaysPauseDesktop ? desktopSource : nil
     }
 
     /// A surface with no known display falls back to the all-displays signals.
@@ -152,6 +185,11 @@ nonisolated struct SurfaceTarget: Equatable, Sendable {
     var policy: PlaybackPolicy
     /// Reach `policy` with a rate ramp rather than a cut.
     var ramps: Bool
+    /// The desktop layer over the video: what it holds, whether it covers the video
+    /// (faded when `ramps`), and how hard a desktop video in it may play.
+    var desktopSource: DesktopSource?
+    var showsDesktop = false
+    var desktopPolicy: PlaybackPolicy = .paused
 
     static let paused = SurfaceTarget(policy: .paused, ramps: false)
 }
@@ -204,26 +242,38 @@ nonisolated enum PlaybackReducer {
     }
 
     static func target(for surface: Surface, in state: PlaybackState) -> SurfaceTarget {
-        if state.displaysAsleep {
-            return .paused
-        }
         // loginwindow reports the lock before the agent updates the surfaces, and the
         // agent may leave a hidden desktop surface on `default` for the whole lock.
         // An idle (screensaver) presentation stays idle.
         let mode: PresentationMode = state.screenLocked && surface.mode == .default ? .locked : surface.mode
         let prefs = state.prefs
-        let policy = PlaybackPolicy.compute(
-            presentationMode: mode,
-            activityState: surface.activity,
-            userPaused: prefs.isUserPaused(displayID: surface.displayID),
-            alwaysPauseDesktop: prefs.alwaysPauseDesktop,
-            pauseWhenOccluded: prefs.pauseWhenOccluded,
-            desktopOccluded: prefs.isOccluded(displayID: surface.displayID),
-            displayHasFullscreenApp: prefs.hasFullscreenApp(displayID: surface.displayID),
-            screenSaverIsOurs: prefs.screenSaverIsOurs,
-            power: state.power,
+        // Previews keep showing the video, which is what the Settings tile stands for.
+        let desktopSource = surface.role == .desktop ? prefs.activeDesktopSource : nil
+        let showsDesktop = desktopSource != nil && mode == .default
+        if state.displaysAsleep {
+            // Asleep keeps the layer where it is, so a wake doesn't flash the other one.
+            return SurfaceTarget(policy: .paused, ramps: false, desktopSource: desktopSource, showsDesktop: showsDesktop)
+        }
+        func policy(_ mode: PresentationMode, lockScreenOnly: Bool) -> PlaybackPolicy {
+            PlaybackPolicy.compute(
+                presentationMode: mode,
+                activityState: surface.activity,
+                userPaused: prefs.isUserPaused(displayID: surface.displayID),
+                alwaysPauseDesktop: lockScreenOnly,
+                pauseWhenOccluded: prefs.pauseWhenOccluded,
+                desktopOccluded: prefs.isOccluded(displayID: surface.displayID),
+                displayHasFullscreenApp: prefs.hasFullscreenApp(displayID: surface.displayID),
+                screenSaverIsOurs: prefs.screenSaverIsOurs,
+                power: state.power,
+            )
+        }
+        return SurfaceTarget(
+            policy: policy(mode, lockScreenOnly: prefs.alwaysPauseDesktop),
+            ramps: surface.ramps,
+            desktopSource: desktopSource,
+            showsDesktop: showsDesktop,
+            desktopPolicy: showsDesktop ? policy(.default, lockScreenOnly: false) : .paused,
         )
-        return SurfaceTarget(policy: policy, ramps: surface.ramps)
     }
 
     static func published(_ state: PlaybackState) -> PublishedState {
@@ -305,7 +355,8 @@ private nonisolated extension PlaybackState {
     }
 
     mutating func load(_ newPrefs: PlaybackPrefs) {
-        let coverageChanged = newPrefs.coverageDiffers(from: prefs)
+        // A new desktop source fades in, as a window uncovering the desktop ramps.
+        let coverageChanged = newPrefs.coverageDiffers(from: prefs) || newPrefs.activeDesktopSource != prefs.activeDesktopSource
         prefs = newPrefs
         setRamps { _ in coverageChanged }
     }

@@ -27,6 +27,7 @@ func layOutSurface(_ surface: HostedSurface, destSize: CGSize, scaleFactor: CGFl
     CATransaction.commit()
     CATransaction.flush()
     surface.renderer?.resize(to: destSize, scale: scaleFactor)
+    surface.overlay?.resize(to: destSize, scale: scaleFactor)
 }
 
 /// Re-frame a live desktop surface whose layout disagrees with its display about points
